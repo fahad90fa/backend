@@ -102,7 +102,10 @@ class SimpleCollection:
 
 class VectorStore:
     def __init__(self):
-        os.makedirs(settings.CHROMA_PERSIST_DIR, exist_ok=True)
+        try:
+            os.makedirs(settings.CHROMA_PERSIST_DIR, exist_ok=True)
+        except OSError:
+            pass
         self.collections = {}
 
     def get_or_create_collection(self, user_id: str):
