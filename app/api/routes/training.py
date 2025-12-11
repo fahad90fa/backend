@@ -14,7 +14,13 @@ from app.utils.checksum import ChecksumUtils
 settings = get_settings()
 router = APIRouter(prefix="/training", tags=["training"])
 
-vector_store = VectorStore()
+_vector_store = None
+
+def get_vector_store():
+    global _vector_store
+    if _vector_store is None:
+        _vector_store = VectorStore()
+    return _vector_store
 
 ALLOWED_EXTENSIONS = {"pdf", "txt", "md", "json"}
 
@@ -79,7 +85,7 @@ async def upload_document(
     checksum_sha256, file_size = ChecksumUtils.get_file_stats(file_path)
     
     try:
-        chunk_count = vector_store.add_documents(
+        chunk_count = get_vector_store().add_documents(
             user_id=current_user.id,
             source_name=source_name,
             chunks=chunks,
@@ -166,7 +172,7 @@ async def upload_document_with_two_way_verification(
     verification_match = client_checksum.lower() == server_checksum.lower()
     
     try:
-        chunk_count = vector_store.add_documents(
+        chunk_count = get_vector_store().add_documents(
             user_id=current_user.id,
             source_name=source_name,
             chunks=chunks,
@@ -430,7 +436,7 @@ async def delete_document(
             detail="Document not found"
         )
     
-    vector_store.delete_collection_by_source(current_user.id, source_name)
+    get_vector_store().delete_collection_by_source(current_user.id, source_name)
     
     db.delete(document)
     db.commit()
@@ -443,7 +449,7 @@ async def test_retrieval(
     query: str,
     current_user: User = Depends(security.get_current_user)
 ):
-    results = vector_store.retrieve(current_user.id, query, n_results=5)
+    results = get_vector_store().retrieve(current_user.id, query, n_results=5)
     
     return {
         "query": query,
@@ -479,7 +485,7 @@ async def training_chat(
             detail="No training documents found. Please upload documents first."
         )
     
-    retrieved_docs = vector_store.retrieve(current_user.id, chat_request.message, n_results=5)
+    retrieved_docs = get_vector_store().retrieve(current_user.id, chat_request.message, n_results=5)
     
     if not retrieved_docs:
         doc_list = "\n".join([f"- {d.filename}" for d in documents])

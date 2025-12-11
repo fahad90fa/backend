@@ -10,7 +10,13 @@ from app.safety_filter import SafetyFilter
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 gemini_engine = GeminiEngine()
-vector_store = VectorStore()
+_vector_store = None
+
+def get_vector_store():
+    global _vector_store
+    if _vector_store is None:
+        _vector_store = VectorStore()
+    return _vector_store
 
 
 @router.post("/message", response_model=schemas.ChatResponse)
@@ -55,7 +61,7 @@ async def send_message(
     db.commit()
     db.refresh(user_message)
     
-    retrieved_docs = vector_store.retrieve(current_user.id, chat_request.message, n_results=3)
+    retrieved_docs = get_vector_store().retrieve(current_user.id, chat_request.message, n_results=3)
     context = ""
     if retrieved_docs:
         context = "Retrieved knowledge base:\n"

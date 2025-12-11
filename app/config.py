@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -28,6 +29,12 @@ class Settings(BaseSettings):
     
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,https://cyber-scholar-ai.vercel.app"
     ENVIRONMENT: str = "development"
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.ENVIRONMENT != "development":
+            self.CHROMA_PERSIST_DIR = "/tmp/chroma_data"
+            self.UPLOAD_DIR = "/tmp/uploads"
     
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS: int = 100
