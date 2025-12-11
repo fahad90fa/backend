@@ -13,3 +13,4 @@ pypdf==4.3.1
 requests==2.32.0
 aiofiles==24.1.0
 python-multipart==0.0.7
+supabase==2.0.1
