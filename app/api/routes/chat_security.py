@@ -100,7 +100,10 @@ async def set_password(
             )
             db.add(chat_security)
 
-        db.commit()
+        try:
+            db.commit()
+        except Exception as db_error:
+            db.rollback()
 
         try:
             supabase.table("profiles").update({
@@ -151,7 +154,10 @@ async def verify_password(
             chat_security.failed_chat_password_attempts = 0
             chat_security.chat_locked_until = None
             chat_security.last_chat_access = datetime.utcnow()
-            db.commit()
+            try:
+                db.commit()
+            except Exception as db_error:
+                db.rollback()
 
             chat_session_token = secrets.token_hex(32)
             expires_at = (datetime.utcnow() + timedelta(minutes=60)).isoformat()
@@ -173,7 +179,10 @@ async def verify_password(
 
             chat_security.failed_chat_password_attempts = new_attempts
             chat_security.chat_locked_until = lock_until
-            db.commit()
+            try:
+                db.commit()
+            except Exception as db_error:
+                db.rollback()
 
             return {
                 "success": False,
@@ -228,7 +237,10 @@ async def change_password(
         chat_security.chat_password_hash = new_hash
         chat_security.chat_password_salt = new_salt
         chat_security.chat_password_set_at = datetime.utcnow()
-        db.commit()
+        try:
+            db.commit()
+        except Exception as db_error:
+            db.rollback()
 
         try:
             supabase.table("profiles").update({
@@ -282,7 +294,10 @@ async def disable_security(
         chat_security.chat_password_set_at = None
         chat_security.failed_chat_password_attempts = 0
         chat_security.chat_locked_until = None
-        db.commit()
+        try:
+            db.commit()
+        except Exception as db_error:
+            db.rollback()
 
         try:
             supabase.table("profiles").update({

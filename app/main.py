@@ -25,11 +25,19 @@ app = FastAPI(
 
 allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",")]
 
+if not any(origin.startswith("http://localhost") for origin in allowed_origins):
+    allowed_origins.extend([
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:8081",
+    ])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,

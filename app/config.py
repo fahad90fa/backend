@@ -32,10 +32,19 @@ class Settings(BaseSettings):
     
     def __init__(self, **data):
         super().__init__(**data)
-        if self.ENVIRONMENT != "development":
+        is_serverless = self._is_serverless_environment()
+        if is_serverless or self.ENVIRONMENT != "development":
             self.CHROMA_PERSIST_DIR = "/tmp/chroma_data"
             self.UPLOAD_DIR = "/tmp/uploads"
             self.DATABASE_URL = "sqlite:////tmp/cyber_scholar.db"
+    
+    @staticmethod
+    def _is_serverless_environment() -> bool:
+        if os.getenv("VERCEL"):
+            return True
+        if os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            return True
+        return not os.access(".", os.W_OK)
     
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS: int = 100
