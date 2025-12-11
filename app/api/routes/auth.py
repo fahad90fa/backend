@@ -129,6 +129,7 @@ async def get_current_user(current_user: User = Depends(security.get_current_use
 
 
 @router.get("/profile")
+@router.post("/init-profile")
 async def get_profile(current_user: User = Depends(security.get_current_user)):
     try:
         profile = supabase.table('profiles').select('*').eq('id', str(current_user.id)).execute()

@@ -13,9 +13,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
         self.request_counts = defaultdict(list)
+        self.is_serverless = self._is_serverless()
+    
+    @staticmethod
+    def _is_serverless():
+        import os
+        return bool(os.getenv("VERCEL")) or bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
     
     async def dispatch(self, request: Request, call_next):
-        if not settings.RATE_LIMIT_ENABLED or request.method == "OPTIONS":
+        if not settings.RATE_LIMIT_ENABLED or request.method == "OPTIONS" or self.is_serverless:
             return await call_next(request)
         
         client_ip = request.client.host if request.client else "unknown"
