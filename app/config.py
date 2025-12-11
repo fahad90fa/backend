@@ -35,6 +35,7 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT != "development":
             self.CHROMA_PERSIST_DIR = "/tmp/chroma_data"
             self.UPLOAD_DIR = "/tmp/uploads"
+            self.DATABASE_URL = "sqlite:////tmp/cyber_scholar.db"
     
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS: int = 100
