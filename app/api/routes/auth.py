@@ -118,13 +118,22 @@ async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=schemas.UserResponse)
-async def get_current_user(current_user: User = Depends(security.get_current_user)):
+async def get_me(current_user: User = Depends(security.get_current_user)):
     return {
         "id": current_user.id,
         "email": current_user.email,
         "username": current_user.username,
         "is_active": current_user.is_active,
         "created_at": current_user.created_at
+    }
+
+
+@router.get("/verify-token")
+async def verify_token(current_user: User = Depends(security.get_current_user)):
+    return {
+        "valid": True,
+        "user_id": current_user.id,
+        "email": current_user.email
     }
 
 
