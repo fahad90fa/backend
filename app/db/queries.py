@@ -337,7 +337,8 @@ class AdminQueries:
     @staticmethod
     async def get_all_subscriptions(plan: Optional[str] = None, status: Optional[str] = None, limit: int = 50, offset: int = 0):
         try:
-            query = supabase.table("subscriptions").select("*")
+            # Join with profiles to get user information
+            query = supabase.table("subscriptions").select("*, profiles(full_name, email)")
             
             if plan:
                 query = query.eq("plan_name", plan)
@@ -419,7 +420,8 @@ class AdminQueries:
     @staticmethod
     async def get_all_payments(status: Optional[str] = None, user_id: Optional[str] = None, limit: int = 50, offset: int = 0):
         try:
-            query = supabase.table("payment_requests").select("*")
+            # Join with profiles to get user information
+            query = supabase.table("payment_requests").select("*, profiles(full_name, email)")
             
             if status:
                 query = query.eq("status", status)
