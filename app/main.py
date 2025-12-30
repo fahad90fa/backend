@@ -38,9 +38,14 @@ if not any(origin.startswith("http://localhost") for origin in allowed_origins):
         "http://localhost:8081",
     ])
 
-# Ensure the frontend URL is in allowed_origins
-if "https://cyber-scholar-ai.vercel.app" not in allowed_origins:
-    allowed_origins.append("https://cyber-scholar-ai.vercel.app")
+# Ensure common frontend URLs are in allowed_origins
+for origin in [
+    "https://cyber-scholar-ai.vercel.app",
+    "https://cyberscholar.site",
+    "https://www.cyberscholar.site"
+]:
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
 
 logger.info(f"=== CORS Configuration ===")
 logger.info(f"Environment: {settings.ENVIRONMENT}")

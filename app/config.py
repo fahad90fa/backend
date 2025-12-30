@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     MAC_VERIFICATION_KEY: str = Field(default="mac-verification-secret")
     
     ALLOWED_ORIGINS: str = Field(
-        default="http://localhost:3000,http://localhost:5173,http://localhost:8080,http://localhost:8081,https://cyber-scholar-ai.vercel.app"
+        default="http://localhost:3000,http://localhost:5173,http://localhost:8080,http://localhost:8081,https://cyber-scholar-ai.vercel.app,https://cyberscholar.site,https://www.cyberscholar.site"
     )
     ENVIRONMENT: str = Field(default="development") 
     

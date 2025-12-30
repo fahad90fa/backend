@@ -541,10 +541,11 @@ IMPORTANT RULES:
     ai_response = SafetyFilter.add_educational_disclaimer(ai_response, chat_request.message)
     
     try:
+        # Deduct 5 tokens for training chat message
         from app.db.queries import TokenQueries
         await TokenQueries.add_token_transaction(
             user_id=current_user.id,
-            amount=1,
+            amount=5,
             transaction_type="usage",
             reason="Training chat message"
         )

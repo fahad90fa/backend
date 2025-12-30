@@ -104,12 +104,12 @@ async def send_message(
     db.commit()
     db.refresh(ai_message)
     
-    # Deduct 1 token for the chat message
+    # Deduct 5 tokens for the chat message
     try:
         from app.db.queries import TokenQueries
         await TokenQueries.add_token_transaction(
             user_id=current_user.id,
-            amount=1,
+            amount=5,
             transaction_type="usage",
             reason="Chat message"
         )
