@@ -31,7 +31,10 @@ async def register(user_data: ValidatedUserCreate, db: Session = Depends(get_db)
     try:
         signup_options = {}
         if settings.FRONTEND_URL:
-            signup_options["email_redirect_to"] = f"{settings.FRONTEND_URL}/verify-email"
+            # Ensure the URL is absolute and properly formatted
+            frontend_url = settings.FRONTEND_URL.rstrip('/')
+            signup_options["email_redirect_to"] = f"{frontend_url}/verify-email"
+            logger.info(f"Setting email redirect to: {signup_options['email_redirect_to']}")
             
         supabase_user = supabase.auth.sign_up({
             "email": user_data.email.lower(),
