@@ -640,3 +640,28 @@ async def debug_mac_test():
         debug_info["supabase_error"] = str(e)[:100]
     
     return debug_info
+
+
+@router.get("/contacts", dependencies=[Depends(verify_admin_token)])
+async def list_contact_requests(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0)
+):
+    contacts = await ContactQueries.get_all_contact_requests(limit=limit, offset=offset)
+    return contacts
+
+
+class ContactUpdate(BaseModel):
+    status: str
+    admin_notes: Optional[str] = None
+
+
+@router.put("/contacts/{request_id}", dependencies=[Depends(verify_admin_token)])
+async def update_contact_request(request_id: str, payload: ContactUpdate):
+    update_data = payload.dict()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    result = await ContactQueries.update_contact_request(request_id, update_data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Contact request not found")
+    return result

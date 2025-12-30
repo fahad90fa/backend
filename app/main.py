@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.database import init_db
 from app.core.supabase_client import supabase
-from app.api.routes import auth, chat, training, modules, subscriptions, admin, chat_security
+from app.api.routes import auth, chat, training, modules, subscriptions, admin, chat_security, contact
 from app.security_middleware import RateLimitMiddleware, SecurityHeadersMiddleware, RequestLoggingMiddleware
 import logging
 from datetime import datetime
@@ -229,6 +229,7 @@ app.include_router(modules.router, prefix=settings.API_V1_STR)
 app.include_router(subscriptions.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(chat_security.router, prefix=settings.API_V1_STR)
+app.include_router(contact.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/test-db")

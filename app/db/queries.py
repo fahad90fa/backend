@@ -432,3 +432,32 @@ class AdminQueries:
             return result.data
         except Exception:
             return []
+
+
+class ContactQueries:
+    @staticmethod
+    async def create_contact_request(data: Dict):
+        try:
+            result = supabase.table("contact_requests").insert(data).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            print(f"Error creating contact request: {str(e)}")
+            return None
+
+    @staticmethod
+    async def get_all_contact_requests(limit: int = 50, offset: int = 0):
+        try:
+            result = supabase.table("contact_requests").select("*").order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching contact requests: {str(e)}")
+            return []
+
+    @staticmethod
+    async def update_contact_request(request_id: str, data: Dict):
+        try:
+            result = supabase.table("contact_requests").update(data).eq("id", request_id).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            print(f"Error updating contact request: {str(e)}")
+            return None
