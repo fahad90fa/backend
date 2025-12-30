@@ -62,6 +62,55 @@ def is_strong_password(password: str) -> bool:
     return True
 
 
+def sync_chat_security_from_supabase(user_id: str, db: Session) -> ChatSecurity | None:
+    """Sync chat security data from Supabase to local database."""
+    try:
+        response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            profile = response.data[0]
+            if profile.get("chat_security_enabled"):
+                # Normalize timestamp strings to datetime objects
+                def parse_dt(dt_str):
+                    if not dt_str: return None
+                    try:
+                        return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                    except:
+                        return None
+
+                chat_security = db.query(ChatSecurity).filter(ChatSecurity.user_id == user_id).first()
+                
+                if chat_security:
+                    chat_security.chat_security_enabled = profile.get("chat_security_enabled", False)
+                    chat_security.chat_password_hash = profile.get("chat_password_hash")
+                    chat_security.chat_password_salt = profile.get("chat_password_salt")
+                    chat_security.chat_security_hint = profile.get("chat_security_hint")
+                    chat_security.chat_password_set_at = parse_dt(profile.get("chat_password_set_at"))
+                    chat_security.failed_chat_password_attempts = profile.get("failed_chat_password_attempts", 0)
+                    chat_security.chat_locked_until = parse_dt(profile.get("chat_locked_until"))
+                    chat_security.last_chat_access = parse_dt(profile.get("last_chat_access"))
+                else:
+                    chat_security = ChatSecurity(
+                        user_id=user_id,
+                        chat_security_enabled=profile.get("chat_security_enabled", False),
+                        chat_password_hash=profile.get("chat_password_hash"),
+                        chat_password_salt=profile.get("chat_password_salt"),
+                        chat_security_hint=profile.get("chat_security_hint"),
+                        chat_password_set_at=parse_dt(profile.get("chat_password_set_at")),
+                        failed_chat_password_attempts=profile.get("failed_chat_password_attempts", 0),
+                        chat_locked_until=parse_dt(profile.get("chat_locked_until")),
+                        last_chat_access=parse_dt(profile.get("last_chat_access")),
+                    )
+                    db.add(chat_security)
+                
+                db.commit()
+                db.refresh(chat_security)
+                return chat_security
+    except Exception as e:
+        print(f"Warning: Failed to sync from Supabase: {e}")
+        db.rollback()
+    return None
+
+
 @router.post("/set-password")
 async def set_password(
     req: SetPasswordRequest,
@@ -150,6 +199,9 @@ async def verify_password(
         chat_security = db.query(ChatSecurity).filter(ChatSecurity.user_id == current_user.id).first()
         
         if not chat_security:
+            chat_security = sync_chat_security_from_supabase(current_user.id, db)
+
+        if not chat_security:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Chat security not enabled",
@@ -163,7 +215,8 @@ async def verify_password(
                 "message": "Too many failed attempts. Please try again later.",
             }
 
-        password_with_salt = req.password + chat_security.chat_password_salt
+        salt = chat_security.chat_password_salt or ""
+        password_with_salt = req.password + salt
         is_valid = pwd_context.verify(password_with_salt, chat_security.chat_password_hash)
 
         if is_valid:
@@ -244,12 +297,16 @@ async def change_password(
         chat_security = db.query(ChatSecurity).filter(ChatSecurity.user_id == current_user.id).first()
         
         if not chat_security:
+            chat_security = sync_chat_security_from_supabase(current_user.id, db)
+
+        if not chat_security:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Chat security not enabled",
             )
 
-        password_with_salt = req.current_password + chat_security.chat_password_salt
+        salt = chat_security.chat_password_salt or ""
+        password_with_salt = req.current_password + salt
         is_valid = pwd_context.verify(password_with_salt, chat_security.chat_password_hash)
 
         if not is_valid:
@@ -308,12 +365,16 @@ async def disable_security(
         chat_security = db.query(ChatSecurity).filter(ChatSecurity.user_id == current_user.id).first()
         
         if not chat_security:
+            chat_security = sync_chat_security_from_supabase(current_user.id, db)
+
+        if not chat_security:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Chat security not enabled",
             )
 
-        password_with_salt = req.password + chat_security.chat_password_salt
+        salt = chat_security.chat_password_salt or ""
+        password_with_salt = req.password + salt
         is_valid = pwd_context.verify(password_with_salt, chat_security.chat_password_hash)
 
         if not is_valid:
@@ -368,30 +429,7 @@ async def get_profile(
         chat_security = db.query(ChatSecurity).filter(ChatSecurity.user_id == current_user.id).first()
         
         if not chat_security:
-            # Try to fetch from Supabase if not in local DB
-            try:
-                response = supabase.table("profiles").select("*").eq("id", current_user.id).execute()
-                if response.data and len(response.data) > 0:
-                    profile = response.data[0]
-                    if profile.get("chat_security_enabled"):
-                        # Create local record from Supabase data
-                        chat_security = ChatSecurity(
-                            user_id=current_user.id,
-                            chat_security_enabled=profile.get("chat_security_enabled", False),
-                            chat_password_hash=profile.get("chat_password_hash"),
-                            chat_password_salt=profile.get("chat_password_salt"),
-                            chat_security_hint=profile.get("chat_security_hint"),
-                            chat_password_set_at=datetime.fromisoformat(profile.get("chat_password_set_at").replace('Z', '+00:00')) if profile.get("chat_password_set_at") else None,
-                            failed_chat_password_attempts=profile.get("failed_chat_password_attempts", 0),
-                            chat_locked_until=datetime.fromisoformat(profile.get("chat_locked_until").replace('Z', '+00:00')) if profile.get("chat_locked_until") else None,
-                            last_chat_access=datetime.fromisoformat(profile.get("last_chat_access").replace('Z', '+00:00')) if profile.get("last_chat_access") else None,
-                        )
-                        db.add(chat_security)
-                        db.commit()
-                        db.refresh(chat_security)
-            except Exception as supabase_err:
-                print(f"Warning: Failed to fetch/sync from Supabase: {supabase_err}")
-                db.rollback()
+            chat_security = sync_chat_security_from_supabase(current_user.id, db)
 
         if not chat_security:
             raise HTTPException(
