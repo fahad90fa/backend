@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
     ADMIN_PASSWORD: str = ""
+    FRONTEND_URL: str = "https://cyberscholar.site"
     
     MAC_VERIFICATION_KEY: str = Field(default="mac-verification-secret")
     

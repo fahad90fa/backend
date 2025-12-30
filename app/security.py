@@ -148,6 +148,16 @@ async def get_current_user(
     
     user = db.query(User).filter(User.id == user_id).first()
     
+    # Sync verification status from Supabase if needed
+    if user:
+        is_verified_in_token = payload.get("email_confirmed_at") is not None
+        if is_verified_in_token and not user.is_verified:
+            user.is_verified = True
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+    
     if user is None:
         email = payload.get("email", "")
         if email:
@@ -163,7 +173,8 @@ async def get_current_user(
                         email=supabase_user.user.email or "",
                         username=supabase_user.user.email.split("@")[0] if supabase_user.user.email else "user",
                         hashed_password="",
-                        is_active=True
+                        is_active=True,
+                        is_verified=supabase_user.user.email_confirmed_at is not None
                     )
                     db.add(user)
                     try:
@@ -178,7 +189,8 @@ async def get_current_user(
                         email=email,
                         username=email.split("@")[0],
                         hashed_password="",
-                        is_active=True
+                        is_active=True,
+                        is_verified=payload.get("email_confirmed_at") is not None
                     )
                     db.add(user)
                     try:

@@ -29,9 +29,14 @@ async def register(user_data: ValidatedUserCreate, db: Session = Depends(get_db)
         )
     
     try:
+        signup_options = {}
+        if settings.FRONTEND_URL:
+            signup_options["email_redirect_to"] = f"{settings.FRONTEND_URL}/verify-email"
+            
         supabase_user = supabase.auth.sign_up({
             "email": user_data.email.lower(),
-            "password": user_data.password
+            "password": user_data.password,
+            "options": signup_options
         })
         
         if not supabase_user.user:
@@ -88,6 +93,7 @@ async def register(user_data: ValidatedUserCreate, db: Session = Depends(get_db)
                 "email": new_user.email,
                 "username": new_user.username,
                 "is_active": new_user.is_active,
+                "is_verified": new_user.is_verified,
                 "created_at": new_user.created_at
             }
         }
@@ -159,6 +165,7 @@ async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
                 "email": user.email,
                 "username": user.username,
                 "is_active": user.is_active,
+                "is_verified": user.is_verified,
                 "created_at": user.created_at
             }
         }
@@ -185,6 +192,7 @@ async def get_me(current_user: User = Depends(security.get_current_user)):
         "email": current_user.email,
         "username": current_user.username,
         "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified,
         "created_at": current_user.created_at
     }
 
