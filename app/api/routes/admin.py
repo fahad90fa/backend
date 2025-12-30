@@ -68,6 +68,7 @@ class PlanCreateRequest(BaseModel):
 
 class PlanUpdateRequest(BaseModel):
     name: Optional[str] = None
+    slug: Optional[str] = None
     description: Optional[str] = None
     monthly_price: Optional[int] = None
     yearly_price: Optional[int] = None
@@ -75,6 +76,8 @@ class PlanUpdateRequest(BaseModel):
     features: Optional[list] = None
     is_popular: Optional[bool] = None
     is_active: Optional[bool] = None
+    is_enterprise: Optional[bool] = None
+    sort_order: Optional[int] = None
 
 
 class BankSettingsUpdate(BaseModel):
@@ -362,13 +365,15 @@ async def update_plan(plan_id: str, payload: PlanUpdateRequest):
     update_data = {}
     if payload.name:
         update_data["name"] = payload.name
-    if payload.description:
+    if payload.slug:
+        update_data["slug"] = payload.slug
+    if payload.description is not None:
         update_data["description"] = payload.description
-    if payload.monthly_price:
+    if payload.monthly_price is not None:
         update_data["monthly_price"] = payload.monthly_price
-    if payload.yearly_price:
+    if payload.yearly_price is not None:
         update_data["yearly_price"] = payload.yearly_price
-    if payload.tokens_per_month:
+    if payload.tokens_per_month is not None:
         update_data["tokens_per_month"] = payload.tokens_per_month
     if payload.features is not None:
         update_data["features"] = payload.features
@@ -376,6 +381,10 @@ async def update_plan(plan_id: str, payload: PlanUpdateRequest):
         update_data["is_popular"] = payload.is_popular
     if payload.is_active is not None:
         update_data["is_active"] = payload.is_active
+    if payload.is_enterprise is not None:
+        update_data["is_enterprise"] = payload.is_enterprise
+    if payload.sort_order is not None:
+        update_data["sort_order"] = payload.sort_order
     
     update_data["updated_at"] = datetime.utcnow().isoformat()
     
@@ -387,9 +396,18 @@ async def update_plan(plan_id: str, payload: PlanUpdateRequest):
 async def delete_plan(plan_id: str):
     await SubscriptionQueries.get_plan_by_id(plan_id)
     
-    supabase.table("subscription_plans").update({"is_active": False}).eq("id", plan_id).execute()
-    
-    return {"status": "Plan deactivated"}
+    try:
+        # Try to actually delete first
+        result = supabase.table("subscription_plans").delete().eq("id", plan_id).execute()
+        if not result.data:
+            # If nothing was deleted (maybe already gone), but let's check
+            return {"status": "Plan deleted"}
+        return {"status": "Plan deleted"}
+    except Exception as e:
+        # If delete fails (likely foreign key constraint), deactivate instead
+        print(f"Delete failed: {str(e)}, deactivating instead")
+        supabase.table("subscription_plans").update({"is_active": False}).eq("id", plan_id).execute()
+        return {"status": "Plan deactivated (in use)"}
 
 
 @router.get("/token-packs", dependencies=[Depends(verify_admin_token)])
