@@ -1,5 +1,7 @@
 import logging
+import os
 from fastapi import Request, HTTPException, status
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.mac_manager import MACManager
 
@@ -24,6 +26,13 @@ class MACVerificationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         method = request.method
+        
+        # Bypass MAC verification in serverless environments like Vercel
+        # because the system MAC address will be that of the Vercel execution environment
+        # and not the user's device, which will cause verification failures.
+        if os.getenv("VERCEL") == "1" or os.getenv("VERCEL"):
+            logger.debug(f"Bypassing MAC verification for Vercel environment: {path}")
+            return await call_next(request)
         
         if method == "OPTIONS":
             logger.debug(f"Skipping MAC verification for OPTIONS preflight: {path}")
@@ -65,23 +74,21 @@ class MACVerificationMiddleware(BaseHTTPMiddleware):
                 logger.warning(
                     f"MAC verification failed for user {user_id} on {path}: {verification.get('reason')}"
                 )
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Device verification failed. Please log in again."
+                    content={"detail": "Device verification failed. Please log in again."}
                 )
             
             logger.info(f"MAC verification successful for user {user_id}")
             request.state.mac_verified = True
             
-        except HTTPException:
-            raise
         except Exception as e:
             logger.error(f"Error in MAC verification middleware: {type(e).__name__}: {str(e)}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Verification service error"
+                content={"detail": "Verification service error"}
             )
         
         return await call_next(request)

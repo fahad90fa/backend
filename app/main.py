@@ -1,4 +1,4 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -158,6 +158,23 @@ async def validation_exception_handler(request, exc):
             "detail": "Validation failed",
             "errors": errors
         },
+        headers={
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Referrer-Policy",
+        }
+    )
+    
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    origin = request.headers.get("origin", "*")
+    allowed = [o for o in allowed_origins if origin.endswith(o.replace("https://", "").replace("http://", ""))]
+    cors_origin = origin if allowed or "*" in allowed_origins else "*"
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
         headers={
             "Access-Control-Allow-Origin": cors_origin,
             "Access-Control-Allow-Credentials": "true",
