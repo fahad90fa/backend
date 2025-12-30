@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, status
 from pydantic import BaseModel
 from typing import Optional
-from app.db.queries import AdminQueries, SubscriptionQueries, PaymentQueries, TokenQueries, BankSettingsQueries
+from app.db.queries import AdminQueries, SubscriptionQueries, PaymentQueries, TokenQueries, BankSettingsQueries, ContactQueries
 from app.api.dependencies.admin_auth import verify_admin_token
 from app.core.mac_manager import MACManager
 from datetime import datetime, timedelta

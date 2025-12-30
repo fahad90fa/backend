@@ -442,7 +442,10 @@ class ContactQueries:
             return result.data[0] if result.data else None
         except Exception as e:
             print(f"Error creating contact request: {str(e)}")
-            return None
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error: {str(e)}"
+            )
 
     @staticmethod
     async def get_all_contact_requests(limit: int = 50, offset: int = 0):
@@ -451,7 +454,10 @@ class ContactQueries:
             return result.data if result.data else []
         except Exception as e:
             print(f"Error fetching contact requests: {str(e)}")
-            return []
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error: {str(e)}"
+            )
 
     @staticmethod
     async def update_contact_request(request_id: str, data: Dict):
@@ -460,4 +466,7 @@ class ContactQueries:
             return result.data[0] if result.data else None
         except Exception as e:
             print(f"Error updating contact request: {str(e)}")
-            return None
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error: {str(e)}"
+            )
