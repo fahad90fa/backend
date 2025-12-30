@@ -352,29 +352,48 @@ class AdminQueries:
     @staticmethod
     async def get_admin_stats():
         try:
-            users_result = supabase.table("profiles").select("count").execute()
-            total_users = len(users_result.data) if users_result.data else 0
+            # Use 'exact' count to get totals without fetching all rows
+            users_res = supabase.table("profiles").select("*", count="exact").limit(1).execute()
+            total_users = users_res.count if users_res.count is not None else 0
 
-            subscriptions_result = supabase.table("subscriptions").select("*").eq("status", "active").execute()
-            active_subs = subscriptions_result.data or []
+            # Today's signups
+            today = datetime.utcnow().date().isoformat()
+            today_start = f"{today}T00:00:00Z"
+            signups_res = supabase.table("profiles").select("*", count="exact").gte("created_at", today_start).limit(1).execute()
+            today_signups = signups_res.count if signups_res.count is not None else 0
+
+            # Active subscriptions and revenue breakdown
+            # We fetch all subscriptions to calculate both all-time and monthly revenue
+            subscriptions_result = supabase.table("subscriptions").select("plan_name, price_paid, status").execute()
+            all_subs = subscriptions_result.data or []
             
             tier_counts = {"starter": 0, "pro": 0, "pro_plus": 0, "enterprise": 0}
             monthly_revenue = 0
+            total_revenue = 0
             
-            for sub in active_subs:
-                plan_name = sub.get("plan_name", "").lower().replace(" ", "_")
-                if plan_name in tier_counts:
-                    tier_counts[plan_name] += 1
-                monthly_revenue += sub.get("price_paid", 0)
+            for sub in all_subs:
+                price = sub.get("price_paid", 0)
+                total_revenue += price
+                
+                if sub.get("status") == "active":
+                    monthly_revenue += price
+                    plan_name = sub.get("plan_name", "").lower()
+                    if "starter" in plan_name:
+                        tier_counts["starter"] += 1
+                    elif "pro_plus" in plan_name or "pro plus" in plan_name:
+                        tier_counts["pro_plus"] += 1
+                    elif "pro" in plan_name:
+                        tier_counts["pro"] += 1
+                    elif "enterprise" in plan_name:
+                        tier_counts["enterprise"] += 1
 
-            payments_result = supabase.table("payment_requests").select("*").eq("status", "pending").execute()
-            pending_payments = len(payments_result.data) if payments_result.data else 0
+            # Pending payments count
+            payments_res = supabase.table("payment_requests").select("*", count="exact").eq("status", "pending").limit(1).execute()
+            pending_payments = payments_res.count if payments_res.count is not None else 0
 
+            # Token usage (sum of all usage transactions)
             token_transactions = supabase.table("token_transactions").select("amount").eq("transaction_type", "usage").execute()
             token_usage = sum(t.get("amount", 0) for t in (token_transactions.data or []))
-
-            all_subs = supabase.table("subscriptions").select("price_paid").execute()
-            total_revenue = sum(s.get("price_paid", 0) for s in (all_subs.data or []))
 
             return {
                 "total_users": total_users,
@@ -382,16 +401,19 @@ class AdminQueries:
                 "pending_payments": pending_payments,
                 "monthly_revenue": monthly_revenue,
                 "total_revenue": total_revenue,
-                "token_usage": token_usage
+                "token_usage": token_usage,
+                "today_signups": today_signups
             }
-        except Exception:
+        except Exception as e:
+            print(f"Error in get_admin_stats: {str(e)}")
             return {
                 "total_users": 0,
                 "active_subscriptions": {"starter": 0, "pro": 0, "pro_plus": 0, "enterprise": 0},
                 "pending_payments": 0,
                 "monthly_revenue": 0,
                 "total_revenue": 0,
-                "token_usage": 0
+                "token_usage": 0,
+                "today_signups": 0
             }
 
     @staticmethod
